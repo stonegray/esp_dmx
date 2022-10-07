@@ -161,7 +161,7 @@ IRAM_ATTR uint32_t dmx_hal_get_intr_ena_status(uart_hal_context_t *hal){
  */
 void dmx_hal_init(uart_hal_context_t *hal) {
   uart_ll_set_sclk(hal->dev, UART_SCLK_APB);
-  uart_ll_set_baudrate(hal->dev, DMX_TYP_BAUD_RATE);
+  uart_ll_set_baudrate(hal->dev, DMX_TYP_BAUD_RATE, APB_CLK_FREQ);
   uart_ll_set_mode(hal->dev, UART_MODE_RS485_HALF_DUPLEX);
   uart_ll_set_parity(hal->dev, UART_PARITY_DISABLE);
   uart_ll_set_data_bit_num(hal->dev, UART_DATA_8_BITS);
@@ -197,8 +197,9 @@ void dmx_hal_set_sclk(uart_hal_context_t *hal, uart_sclk_t sclk) {
  * @param hal Pointer to a UART HAL context.
  * @param baud_rate The baud rate to use.
  */
-void dmx_hal_set_baudrate(uart_hal_context_t *hal, uint32_t baud_rate) {
-  uart_hal_set_baudrate(hal, baud_rate);
+void dmx_hal_set_baudrate(uart_hal_context_t *hal, uint32_t baud_rate, uint32_t sclk_freq)
+{
+  uart_hal_set_baudrate(hal, baud_rate, sclk_freq);
 }
 
 /**
@@ -238,9 +239,10 @@ void dmx_hal_get_sclk(uart_hal_context_t *hal, uart_sclk_t *sclk) {
  * 
  * @return The baud rate of the UART hardware. 
  */
-uint32_t dmx_hal_get_baudrate(uart_hal_context_t *hal) {
+uint32_t dmx_hal_get_baudrate(uart_hal_context_t *hal, uint32_t sclk_freq)
+{
   uint32_t baud_rate;
-  uart_hal_get_baudrate(hal, &baud_rate);
+  uart_hal_get_baudrate(hal, &baud_rate, sclk_freq);
   return baud_rate;
 }
 

@@ -8,6 +8,7 @@ extern "C" {
 #include "impl/dmx_hal.h"
 #include "esp_dmx.h"
 #include "esp_system.h"
+#include "esp_timer.h"
 
 // UART level interupt masks
 #define UART_INTR_RXFIFO_FULL           (1 << 0) // Interrupt that triggers when the RX FIFO is full.

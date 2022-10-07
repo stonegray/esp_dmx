@@ -7,6 +7,7 @@
 #include "driver/gpio.h"
 #include "driver/periph_ctrl.h"
 #include "driver/uart.h"
+#include "esp32/rom/ets_sys.h"
 #include "esp_check.h"
 #include "esp_log.h"
 #include "impl/dmx_hal.h"
@@ -443,10 +444,25 @@ esp_err_t dmx_param_config(dmx_port_t dmx_num, const dmx_config_t *dmx_config) {
 #endif
 
   // configure the uart hardware
+
+  switch (dmx_config->source_clk)
+  {
+  case UART_SCLK_DEFAULT:
+  //case UART_SCLK_APB:
+    p_dmx_obj[dmx_num]->sclk_freq = APB_CLK_FREQ;
+    break;
+  case UART_SCLK_REF_TICK:
+    p_dmx_obj[dmx_num]->sclk_freq = REF_CLK_FREQ;
+    break;
+  default:
+    return ESP_ERR_INVALID_STATE;
+    break;
+  }
+
   portENTER_CRITICAL(&(dmx_context[dmx_num].spinlock));
   dmx_hal_init(&(dmx_context[dmx_num].hal));
   dmx_hal_set_sclk(&(dmx_context[dmx_num].hal), dmx_config->source_clk);
-  dmx_hal_set_baudrate(&(dmx_context[dmx_num].hal), dmx_config->baud_rate);
+  dmx_hal_set_baudrate(&(dmx_context[dmx_num].hal), dmx_config->baud_rate, p_dmx_obj[dmx_num]->sclk_freq);
   dmx_hal_set_tx_idle_num(&(dmx_context[dmx_num].hal), dmx_config->idle_num);
   dmx_hal_set_tx_break_num(&(dmx_context[dmx_num].hal), dmx_config->break_num);
   portEXIT_CRITICAL(&(dmx_context[dmx_num].spinlock));
@@ -470,7 +486,7 @@ esp_err_t dmx_set_baud_rate(dmx_port_t dmx_num, uint32_t baud_rate) {
   }
 
   portENTER_CRITICAL(&(dmx_context[dmx_num].spinlock));
-  dmx_hal_set_baudrate(&(dmx_context[dmx_num].hal), baud_rate);
+  dmx_hal_set_baudrate(&(dmx_context[dmx_num].hal), baud_rate, p_dmx_obj[dmx_num]->sclk_freq);
   portEXIT_CRITICAL(&(dmx_context[dmx_num].spinlock));
 
   return ESP_OK;
@@ -483,7 +499,7 @@ esp_err_t dmx_get_baud_rate(dmx_port_t dmx_num, uint32_t *baud_rate) {
                       "baud_rate is null");
 
   portENTER_CRITICAL(&(dmx_context[dmx_num].spinlock));
-  *baud_rate = dmx_hal_get_baudrate(&(dmx_context[dmx_num].hal));
+  *baud_rate = dmx_hal_get_baudrate(&(dmx_context[dmx_num].hal), p_dmx_obj[dmx_num]->sclk_freq);
   portEXIT_CRITICAL(&(dmx_context[dmx_num].spinlock));
 
   return ESP_OK;
@@ -496,7 +512,7 @@ esp_err_t dmx_set_break_num(dmx_port_t dmx_num, uint8_t break_num) {
   // ensure the new break is within DMX specification
   uint32_t baud_rate;
   portENTER_CRITICAL(&(dmx_context[dmx_num].spinlock));
-  baud_rate = dmx_hal_get_baudrate(&(dmx_context[dmx_num].hal));
+  baud_rate = dmx_hal_get_baudrate(&(dmx_context[dmx_num].hal), p_dmx_obj[dmx_num]->sclk_freq);
   portEXIT_CRITICAL(&(dmx_context[dmx_num].spinlock));
   const int brk_us = get_brk_us(baud_rate, break_num);
   if (brk_us < DMX_TX_MIN_SPACE_FOR_BRK_US) {
@@ -537,7 +553,7 @@ esp_err_t dmx_set_idle_num(dmx_port_t dmx_num, uint16_t idle_num) {
   // ensure the new mark-after-break is within DMX specification
   uint32_t baud_rate;
   portENTER_CRITICAL(&(dmx_context[dmx_num].spinlock));
-  baud_rate = dmx_hal_get_baudrate(&(dmx_context[dmx_num].hal));
+  baud_rate = dmx_hal_get_baudrate(&(dmx_context[dmx_num].hal), p_dmx_obj[dmx_num]->sclk_freq);
   portEXIT_CRITICAL(&(dmx_context[dmx_num].spinlock));
   const int mab_us = get_mab_us(baud_rate, idle_num);
   if (!DMX_TX_MAB_DURATION_IS_VALID(mab_us)) {
@@ -774,7 +790,7 @@ esp_err_t dmx_send_packet(dmx_port_t dmx_num, uint16_t num_slots) {
     // get break and mark time in microseconds
     uint32_t baud_rate, break_num, idle_num;
     portENTER_CRITICAL(&(dmx_context[dmx_num].spinlock));
-    baud_rate = dmx_hal_get_baudrate(&(dmx_context[dmx_num].hal));
+    baud_rate = dmx_hal_get_baudrate(&(dmx_context[dmx_num].hal), p_dmx_obj[dmx_num]->sclk_freq);
     break_num = dmx_hal_get_break_num(&(dmx_context[dmx_num].hal));
     idle_num = dmx_hal_get_idle_num(&(dmx_context[dmx_num].hal));
     portEXIT_CRITICAL(&(dmx_context[dmx_num].spinlock));

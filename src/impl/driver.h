@@ -41,6 +41,8 @@ typedef struct {
   SemaphoreHandle_t tx_done_sem;  // Signals the frame has finished being tx'd.
   int64_t tx_last_brk_ts;         // Timestamp of the last tx'd break.
 
+  uint32_t sclk_freq;             // Either APB_CLK_FREQ or REF_CLK_FREQ, depending on configuration.
+
   /* The remaining variables are only used if the DMX sniffer is enabled. They
   are uninitialized until dmx_sniffer_enable() is called. */
 
